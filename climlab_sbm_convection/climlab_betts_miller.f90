@@ -147,7 +147,7 @@ end subroutine escomp
 !! remove input coldT and output snow,
 !!  remove optional arguments mask and conv
 !! CLIMLAB also change call order, since rhbm is now an array input
-subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, &
+subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, pstar_input, &
                         HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0, &
                         tau_bm_input, do_simp, do_shallower, do_changeqref, &
                         do_envsat, do_taucape, capetaubm, tau_min, &
@@ -198,6 +198,7 @@ subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, &
    real, intent(in) :: tin(ix,jx,kx), qin(ix,jx,kx), pfull(ix,jx,kx), phalf(ix,jx,kx+1)
    !! CLIMLAB rhbm is now array input
    real, intent(in) :: rhbm(ix,jx,kx)
+   real, intent(in) :: pstar_input(ix, jx)
    real   , intent(in)                    :: dt
    !logical   , intent(in) :: coldT
    !real   , intent(out), dimension(:,:)   :: rain,snow, bmflag, klzbs, cape, &
@@ -224,25 +225,36 @@ logical :: avgbl
    real,dimension(size(tin,1),size(tin,2),size(tin,3)) ::  &
              rin, esat, qsat, desat, dqsat, pmes, pmass
    real,dimension(size(tin,1),size(tin,2))             ::  &
-                     hlcp, precip, precip_t
+                     hlcp, precip, precip_t, pstar
    real,dimension(size(tin,3))                         :: eref, rpc, tpc, &
                                                           tpc1, rpc1
 
+!! DH modified output of capecalcnew, so added dummy variables here to support it
    real                                                ::  &
        cape1, cin1, tot, deltak, deltaq, qrefint, deltaqfrac, deltaqfrac2, &
-       ptopfrac, es, capeflag1, plzb, plcl, cape2, small
+       ptopfrac, es, capeflag1, plzb, plcl, plcl2, cape2, small
 !! CLIMLAB tau_bm is modified so declare it as a local variable
    real tau_bm
 !integer  i, j, k, ix, jx, kx, klzb, ktop, klzb2
-integer  i, j, k, klzb, ktop, klzb2
+integer  i, j, k, klzb, ktop, klcl2, klcl, klfc
 
 !  These are not comments! Necessary directives to f2py to handle array dimensions
 !f2py depend(ix,jx,kx) p,phalf,tin,qin,rhbm
 !f2py depend(ix,jx,kx) tdel,qdel,q_ref,t_ref
-!f2py depend(ix,jx) rain,bmflag,klzbs,cape,cin,invtau_bm_t,invtau_bm_q,capeflag
+!f2py depend(ix,jx) pstar_input, rain,bmflag,klzbs,cape,cin,invtau_bm_t,invtau_bm_q,capeflag
 
 !! CLIMLAB first initialize tau_bm
   tau_bm = tau_bm_input
+!! DH setting up pstar
+   do i=1,ix
+      do j=1,jx
+         if (pstar_input(i,j).gt.1.e4) then
+            pstar(i,j) = pstar_input(i,j)
+         else
+            pstar(i,j) = 1.e5
+         end if
+      end do
+   end do
 
 !-----------------------------------------------------------------------
 !     computation of precipitation by betts-miller scheme
@@ -279,10 +291,14 @@ integer  i, j, k, klzb, ktop, klzb2
              !                cp_air, rdgas, rvgas, hlv, kappa, tin(i,j,:), &
              !                rin(i,j,:), avgbl, cape1, cin1, tpc, &
              !                rpc, klzb)
+             !call capecalc( kx,  pfull(i,j,:),  phalf(i,j,:),&
+             !               cp_air, rdgas, rvgas, hlv, kappa, es0, tin(i,j,:), &
+             !               rin(i,j,:), avgbl, cape1, cin1, tpc, &
+             !               rpc, klzb)
              call capecalc( kx,  pfull(i,j,:),  phalf(i,j,:),&
-                            cp_air, rdgas, rvgas, hlv, kappa, es0, tin(i,j,:), &
-                            rin(i,j,:), avgbl, cape1, cin1, tpc, &
-                            rpc, klzb)
+                            cp_air, rdgas, rvgas, hlv, kappa, es0, pstar(i,j), &
+                            tin(i,j,:), rin(i,j,:), avgbl, cape1, cin1, tpc, rpc, &
+                            klcl2, klcl, klfc, klzb, plcl2, plcl, plzb)
 
 ! set values for storage
              capeflag(i,j) = capeflag1
@@ -531,11 +547,15 @@ integer  i, j, k, klzb, ktop, klzb2
 !all new cape calculation.
 
 !! CLIMLAB: added parameter es0 as in input argument
+!! DH note: added input parameter pstar to support cases where sp varies
+!! DH note: added output parameters klcl2, klcl, klfc, klzb, plcl2, plcl, plzb
 
 !      subroutine capecalcnew(kx,p,phalf,cp_air,rdgas,rvgas,hlv,kappa,tin,rin,&
 !                             avgbl,cape,cin,tp,rp,klzb)
-    subroutine capecalc(kx,p,phalf,cp_air,rdgas,rvgas,hlv,kappa,es0,&
-                      tin,rin,avgbl,cape,cin,tp,rp,klzb)
+!    subroutine capecalc(kx,p,phalf,cp_air,rdgas,rvgas,hlv,kappa,es0,&
+!                      tin,rin,avgbl,cape,cin,tp,rp,klzb)
+    subroutine capecalc(kx,p,phalf,cp_air,rdgas,rvgas,hlv,kappa,es0,pstar,&
+                      tin,rin,avgbl,cape,cin,tp,rp,klcl2, klcl, klfc, klzb, plcl2, plcl, plzb)
 
 !
 !    Input:
@@ -578,22 +598,21 @@ integer  i, j, k, klzb, ktop, klzb2
       !real, intent(in), dimension(:)         :: p, phalf, tin, rin
       real, intent(in)         :: p(kx), phalf(kx+1), tin(kx), rin(kx)
       !real, intent(in)                       :: rdgas, rvgas, hlv, kappa, cp_air
-      real, intent(in)           :: rdgas, rvgas, hlv, kappa, cp_air, es0
-      integer, intent(out)                   :: klzb
+      real, intent(in)           :: rdgas, rvgas, hlv, kappa, cp_air, es0, pstar
+      integer, intent(out)                   :: klcl2, klcl, klfc, klzb
       !real, intent(out), dimension(:)        :: tp, rp
       real, intent(out)       :: tp(kx), rp(kx)
       real, intent(out)                      :: cape, cin
+      real, intent(out)                      :: plcl2, plcl, plzb
 
-      integer            :: k, klcl, klfc, klcl2
+      integer            :: k
       logical            :: nocape
       real, dimension(kx)   :: theta
-      real                  :: t0, r0, es, rs, theta0, pstar, value, tlcl, &
-                               a, b, dtdlnp, d2tdlnp2, thetam, rm, tlcl2, &
-                               plcl2, plcl, plzb, small
+      real                  :: t0, r0, es, rs, theta0, value, tlcl, &
+                               a, b, dtdlnp, d2tdlnp2, thetam, rm, tlcl2, small
 !  These are not comments! Necessary directives to f2py to handle array dimensions
 !f2py depend(kx) p,phalf,tin,rin,tp,rp
 
-      pstar = 1.e5
 ! so we can run dry limit (one expression involves 1/hlv)
       small = 1.e-10
 
