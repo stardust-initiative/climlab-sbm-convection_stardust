@@ -147,7 +147,7 @@ end subroutine escomp
 !! remove input coldT and output snow,
 !!  remove optional arguments mask and conv
 !! CLIMLAB also change call order, since rhbm is now an array input
-subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, pstar_input, &
+subroutine betts_miller_pstar (dt, tin, qin, rhbm, pfull, phalf, pstar, &
                         HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0, &
                         tau_bm_input, do_simp, do_shallower, do_changeqref, &
                         do_envsat, do_taucape, capetaubm, tau_min, &
@@ -168,6 +168,7 @@ subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, pstar_input, &
 !                      model levels
 !           pfull    pressure at full model levels
 !           phalf    pressure at half (interface) model levels
+!           pstar    pressure at the surface level
 !           coldT    should precipitation be snow at this point?
 !   optional:
 !           mask     optional mask (0 or 1.)
@@ -196,15 +197,11 @@ subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, pstar_input, &
    integer, intent(in) :: ix, jx, kx
    !real   , intent(in) , dimension(:,:,:) :: tin, qin, pfull, phalf
    real, intent(in) :: tin(ix,jx,kx), qin(ix,jx,kx), pfull(ix,jx,kx), phalf(ix,jx,kx+1)
+   real, intent(in) :: pstar(ix, jx)
    !! CLIMLAB rhbm is now array input
    real, intent(in) :: rhbm(ix,jx,kx)
-   real, intent(in) :: pstar_input(ix, jx)
    real   , intent(in)                    :: dt
    !logical   , intent(in) :: coldT
-   !real   , intent(out), dimension(:,:)   :: rain,snow, bmflag, klzbs, cape, &
-  !     cin, invtau_bm_t, invtau_bm_q, capeflag
-   real, intent(out) :: rain(ix,jx), bmflag(ix,jx), klzbs(ix,jx), cape(ix,jx), &
-      cin(ix,jx), invtau_bm_t(ix,jx), invtau_bm_q(ix,jx), capeflag(ix,jx)
 
    !! CLIMLAB added new inputs
    real, intent(in) :: HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0
@@ -212,6 +209,10 @@ subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, pstar_input, &
    logical, intent(in) :: do_simp, do_shallower, do_changeqref, do_envsat, &
        do_taucape
 
+   !real   , intent(out), dimension(:,:)   :: rain,snow, bmflag, klzbs, cape, &
+  !     cin, invtau_bm_t, invtau_bm_q, capeflag
+   real, intent(out) :: rain(ix,jx), bmflag(ix,jx), klzbs(ix,jx), cape(ix,jx), &
+      cin(ix,jx), invtau_bm_t(ix,jx), invtau_bm_q(ix,jx), capeflag(ix,jx)
    !real   , intent(out), dimension(:,:,:) :: tdel, qdel, q_ref, t_ref
    real, intent(out) :: tdel(ix,jx,kx), qdel(ix,jx,kx), q_ref(ix,jx,kx), &
       t_ref(ix,jx,kx)
@@ -225,7 +226,7 @@ logical :: avgbl
    real,dimension(size(tin,1),size(tin,2),size(tin,3)) ::  &
              rin, esat, qsat, desat, dqsat, pmes, pmass
    real,dimension(size(tin,1),size(tin,2))             ::  &
-                     hlcp, precip, precip_t, pstar
+                     hlcp, precip, precip_t
    real,dimension(size(tin,3))                         :: eref, rpc, tpc, &
                                                           tpc1, rpc1
 
@@ -241,21 +242,10 @@ integer  i, j, k, klzb, ktop, klcl2, klcl, klfc
 !  These are not comments! Necessary directives to f2py to handle array dimensions
 !f2py depend(ix,jx,kx) p,phalf,tin,qin,rhbm
 !f2py depend(ix,jx,kx) tdel,qdel,q_ref,t_ref
-!f2py depend(ix,jx) pstar_input, rain,bmflag,klzbs,cape,cin,invtau_bm_t,invtau_bm_q,capeflag
+!f2py depend(ix,jx) pstar, rain,bmflag,klzbs,cape,cin,invtau_bm_t,invtau_bm_q,capeflag
 
 !! CLIMLAB first initialize tau_bm
   tau_bm = tau_bm_input
-!! DH setting up pstar
-   do i=1,ix
-      do j=1,jx
-         if (pstar_input(i,j).gt.1.e4) then
-            pstar(i,j) = pstar_input(i,j)
-         else
-            pstar(i,j) = 1.e5
-         end if
-      end do
-   end do
-
 !-----------------------------------------------------------------------
 !     computation of precipitation by betts-miller scheme
 !-----------------------------------------------------------------------
@@ -540,7 +530,100 @@ integer  i, j, k, klzb, ktop, klcl2, klcl, klfc
        !snow = 0.
 
 
-   end subroutine betts_miller
+   end subroutine betts_miller_pstar
+
+subroutine betts_miller (dt, tin, qin, rhbm, pfull, phalf, &
+                        HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0, &
+                        tau_bm_input, do_simp, do_shallower, do_changeqref, &
+                        do_envsat, do_taucape, capetaubm, tau_min, &
+                        ix, jx, kx, &
+                        rain, tdel, qdel, q_ref, bmflag, &
+                        klzbs, cape, cin, t_ref,invtau_bm_t,invtau_bm_q, &
+                        capeflag)
+  implicit none
+!-----------------------------------------------------------------------
+!
+!                     Betts-Miller Convection Scheme
+!
+!-----------------------------------------------------------------------
+!
+!   input:  dt       time step in seconds
+!           tin      temperature at full model levels
+!           qin      specific humidity of water vapor at full
+!                      model levels
+!           pfull    pressure at full model levels
+!           phalf    pressure at half (interface) model levels
+!           coldT    should precipitation be snow at this point?
+!   optional:
+!           mask     optional mask (0 or 1.)
+!           conv     logical flag; if true then no betts-miller
+!                       adjustment is performed at that grid-point or
+!                       model level
+!
+!  output:  rain     liquid precipitation (kg/m2)
+!           snow     frozen precipitation (kg/m2)
+!           tdel     temperature tendency at full model levels
+!           qdel     specific humidity tendency (of water vapor) at
+!                      full model levels
+!           bmflag   flag for which routines you're calling
+!           klzbs    stored klzb values
+!           cape     convectively available potential energy
+!           cin      convective inhibition (this and the above are before the
+!                    adjustment)
+!           invtau_bm_t temperature relaxation timescale
+!           invtau_bm_q humidity relaxation timescale
+!           capeflag a flag that says why cape=0
+!
+!-----------------------------------------------------------------------
+!--------------------- interface arguments -----------------------------
+
+   !! CLIMLAB pass grid dimensions explicitly
+   integer, intent(in) :: ix, jx, kx
+   !real   , intent(in) , dimension(:,:,:) :: tin, qin, pfull, phalf
+   real, intent(in) :: tin(ix,jx,kx), qin(ix,jx,kx), pfull(ix,jx,kx), phalf(ix,jx,kx+1)
+   !! CLIMLAB rhbm is now array input
+   real, intent(in) :: rhbm(ix,jx,kx)
+   real   , intent(in)                    :: dt
+   !logical   , intent(in) :: coldT
+
+   !! CLIMLAB added new inputs
+   real, intent(in) :: HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0
+   real, intent(in) :: tau_bm_input, capetaubm, tau_min
+   logical, intent(in) :: do_simp, do_shallower, do_changeqref, do_envsat, &
+       do_taucape
+
+   !real   , intent(out), dimension(:,:)   :: rain,snow, bmflag, klzbs, cape, &
+  !     cin, invtau_bm_t, invtau_bm_q, capeflag
+   real, intent(out) :: rain(ix,jx), bmflag(ix,jx), klzbs(ix,jx), cape(ix,jx), &
+      cin(ix,jx), invtau_bm_t(ix,jx), invtau_bm_q(ix,jx), capeflag(ix,jx)
+   !real   , intent(out), dimension(:,:,:) :: tdel, qdel, q_ref, t_ref
+   real, intent(out) :: tdel(ix,jx,kx), qdel(ix,jx,kx), q_ref(ix,jx,kx), &
+      t_ref(ix,jx,kx)
+   ! real   , intent(in) , dimension(:,:,:), optional :: mask
+   ! logical, intent(in) , dimension(:,:,:), optional :: conv
+!-----------------------------------------------------------------------
+!---------------------- local data -------------------------------------
+   integer  i, j
+   real :: pstar(ix,jx)
+
+!  These are not comments! Necessary directives to f2py to handle array dimensions
+!f2py depend(ix,jx,kx) p,phalf,tin,qin,rhbm
+!f2py depend(ix,jx,kx) tdel,qdel,q_ref,t_ref
+!f2py depend(ix,jx) rain,bmflag,klzbs,cape,cin,invtau_bm_t,invtau_bm_q,capeflag
+   do i=1,ix 
+      do j=1,jx
+         pstar(i,j)=1.0e5
+      end do 
+   end do
+   call betts_miller_pstar(dt, tin, qin, rhbm, pfull, phalf, pstar, &
+                        HLv,Cp_air,Grav,rdgas,rvgas,kappa, es0, &
+                        tau_bm_input, do_simp, do_shallower, do_changeqref, &
+                        do_envsat, do_taucape, capetaubm, tau_min, &
+                        ix, jx, kx, &
+                        rain, tdel, qdel, q_ref, bmflag, &
+                        klzbs, cape, cin, t_ref,invtau_bm_t,invtau_bm_q, &
+                        capeflag)
+end subroutine betts_miller
 
 !#######################################################################
 
