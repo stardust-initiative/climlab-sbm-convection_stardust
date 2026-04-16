@@ -1,13 +1,11 @@
-# Simplified Betts-Miller convection scheme
-
-[![Build and test](https://github.com/climlab/climlab-sbm-convection/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/climlab/climlab-sbm-convection/actions/workflows/build-and-test.yml)
-
+# Simplified Betts-Miller convection scheme (Stardust fork)
 
 Brian Rose, University at Albany
+Stardust modifications by [Modeling-group-Stardust-labs-ltd](https://github.com/Modeling-group-Stardust-labs-ltd)
 
 ## About
 
-This is a stand-alone Python wrapper for the Simplified Betts-Miller convection scheme described by [Frierson (2007), J. Atmos. Sci. 64, doi:10.1175/JAS3935.1](https://doi.org/10.1175/JAS3935.1).
+This is a fork of [climlab-sbm-convection](https://github.com/climlab/climlab-sbm-convection), a stand-alone Python wrapper for the Simplified Betts-Miller convection scheme described by [Frierson (2007), J. Atmos. Sci. 64, doi:10.1175/JAS3935.1](https://doi.org/10.1175/JAS3935.1).
 
 Thanks to Dargan Frierson for sharing the original Fortran code.
 
@@ -16,6 +14,26 @@ for [climlab](https://climlab.readthedocs.io/), but it can also be used
 as a stand-alone model. This is a lightweight wrapper that emulates the 
 Fortran interface as closely as possible. 
 Dargan Frierson's original Fortran code is bundled here in the `src` directory for reference.
+
+## Stardust modifications
+
+This fork extends the upstream [climlab-sbm-convection](https://github.com/climlab/climlab-sbm-convection)
+with the following changes for stratospheric aerosol climate modeling:
+
+### Surface pressure variant (`betts_miller_pstar`)
+
+The original `betts_miller` subroutine is refactored into `betts_miller_pstar`,
+which accepts an explicit surface pressure array `pstar(ix, jx)` as input. This
+allows the convection scheme to operate correctly with non-standard surface
+pressure profiles and is needed when the model uses a variable-resolution
+pressure grid that does not assume a uniform 1000 hPa surface.
+
+### CAPE calculation wrapper (`capecalc`)
+
+A wrapped version of the CAPE (Convective Available Potential Energy)
+calculation routine is exposed as a callable Fortran subroutine, enabling
+diagnostic CAPE computation from the Python level independently of the
+full convection scheme.
 
 ## Installing
 
@@ -82,3 +100,8 @@ jupyter lab
 
 - Version 0.2 (released 8/2/2024) implements support for a non-uniform relative humidity parameter. The subroutine `betts_miller` now expects array input for relative humidity. The call signature for this subroutine has changed.
 - Version 0.1 is the first public release. 
+
+## Upstream
+
+This fork is based on [climlab/climlab-sbm-convection](https://github.com/climlab/climlab-sbm-convection).
+The main branch in this repository is `main_stardust`.
