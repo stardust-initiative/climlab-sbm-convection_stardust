@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+title: "climlab-sbm-convection (Stardust fork)"
+message: >
+  If you use this software, please cite the Stardust paper describing the
+  modifications, the upstream climlab-sbm-convection package, and the
+  Frierson (2007) convection scheme.
+type: software
+authors:
+  - given-names: "Brian E. J."
+    family-names: "Rose"
+    affiliation: "University at Albany"
+  - name: "stardust-initiative"
+repository-code: "https://github.com/stardust-initiative/climlab-sbm-convection_stardust"
+license: MIT
+references:
+  # TODO: update DOI / preprint URL when the Stardust preprint is published.
+  - type: article
+    title: "Solid-particle stratospheric aerosol injection: a 2-D modeling exploration of the design space"
+    authors:
+      - given-names: "Yoav"
+        family-names: "Lederer"
+      - given-names: "Nahliel"
+        family-names: "Wygoda"
+      - given-names: "Dorri"
+        family-names: "Halbertal"
+      - given-names: "Brian E. J."
+        family-names: "Rose"
+    journal: "Atmospheric Chemistry and Physics"
+    year: 2026
+    notes: "Preprint forthcoming; DOI to be assigned."
+  - type: software
+    title: "climlab-sbm-convection (upstream package)"
+    repository-code: "https://github.com/climlab/climlab-sbm-convection"
+    authors:
+      - given-names: "Brian E. J."
+        family-names: "Rose"
+  - type: article
+    title: "The Dynamics of Idealized Convection Schemes and Their Effect on the Zonally Averaged Tropical Circulation"
+    authors:
+      - given-names: "Dargan M. W."
+        family-names: "Frierson"
+    journal: "Journal of the Atmospheric Sciences"
+    year: 2007
+    volume: 64
+    issue: "6"
+    start: 1959
+    end: 1976
+    doi: "10.1175/JAS3935.1"
