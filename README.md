@@ -1,7 +1,7 @@
 # Simplified Betts-Miller convection scheme (Stardust fork)
 
 Brian Rose, University at Albany
-Stardust modifications by [Modeling-group-Stardust-labs-ltd](https://github.com/Modeling-group-Stardust-labs-ltd)
+Stardust modifications by [stardust-initiative](https://github.com/stardust-initiative)
 
 ## About
 
@@ -98,10 +98,6 @@ jupyter lab
 
 ## Version history
 
+- Version 0.3.0 (May 2026) is the first Stardust-modifications release. Adds an explicit surface-pressure variant (`betts_miller_pstar`) for non-uniform pressure grids and a CAPE-calculation wrapper. See the *Stardust modifications* section above. Incorporates upstream changes through climlab-sbm-convection v0.2.
 - Version 0.2 (released 8/2/2024) implements support for a non-uniform relative humidity parameter. The subroutine `betts_miller` now expects array input for relative humidity. The call signature for this subroutine has changed.
 - Version 0.1 is the first public release. 
-
-## Upstream
-
-This fork is based on [climlab/climlab-sbm-convection](https://github.com/climlab/climlab-sbm-convection).
-The main branch in this repository is `main_stardust`.
