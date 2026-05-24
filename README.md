@@ -100,8 +100,3 @@ jupyter lab
 
 - Version 0.2 (released 8/2/2024) implements support for a non-uniform relative humidity parameter. The subroutine `betts_miller` now expects array input for relative humidity. The call signature for this subroutine has changed.
 - Version 0.1 is the first public release. 
-
-## Upstream
-
-This fork is based on [climlab/climlab-sbm-convection](https://github.com/climlab/climlab-sbm-convection).
-The main branch in this repository is `main_stardust`.
