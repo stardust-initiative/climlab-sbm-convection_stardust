@@ -1,7 +1,7 @@
 # Simplified Betts-Miller convection scheme (Stardust fork)
 
 Brian Rose, University at Albany
-Stardust modifications by [Modeling-group-Stardust-labs-ltd](https://github.com/Modeling-group-Stardust-labs-ltd)
+Stardust modifications by [stardust-initiative](https://github.com/stardust-initiative)
 
 ## About
 
